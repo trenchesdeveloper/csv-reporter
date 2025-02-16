@@ -18,11 +18,11 @@ dropdb:
 	docker exec -it goflow_postgres dropdb goflow
 migrateup:
 	migrate -path db/migrations -database "postgresql://root:secret@localhost:5432/goflow?sslmode=disable" -verbose up
-	#migrate -path db/migrations -database "postgresql://root:secret@localhost:5434/goflow?sslmode=disable" -verbose up
+	migrate -path db/migrations -database "postgresql://root:secret@localhost:5433/goflow_test?sslmode=disable" -verbose up
 
 migratedown:
 	migrate -path db/migrations -database "postgresql://root:secret@localhost:5432/goflow?sslmode=disable" -verbose down
-	#migrate -path db/migrations -database "postgresql://root:secret@localhost:5434/goflow?sslmode=disable" -verbose down
+	migrate -path db/migrations -database "postgresql://root:secret@localhost:5433/goflow_test?sslmode=disable" -verbose up
 
 gen-docs:
 	swag init -g ./api/main.go -d cmd,internal && swag fmt

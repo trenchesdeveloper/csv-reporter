@@ -1,13 +1,11 @@
 package main
 
 import (
-	"GoFlow_/config"
 	"database/sql"
-	_ "github.com/lib/pq"
-)
 
-//TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
+	_ "github.com/lib/pq"
+	"github.com/trenchesdeveloper/csv-reporter/config"
+)
 
 func main() {
 	cfg, err := config.LoadConfig(".")

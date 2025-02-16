@@ -5,9 +5,10 @@ import (
 )
 
 type AppConfig struct {
-	DBSOURCE string `mapstructure:"DB_SOURCE"`
-	HTTPPort string `mapstructure:"HTTP_PORT"`
-	DBDRIVER string `mapstructure:"DB_DRIVER"`
+	DBSOURCE       string `mapstructure:"DB_SOURCE"`
+	HTTPPort       string `mapstructure:"HTTP_PORT"`
+	DBDRIVER       string `mapstructure:"DB_DRIVER"`
+	DB_SOURCE_TEST string `mapstructure:"DB_SOURCE_TEST"`
 }
 
 func LoadConfig(path string) (*AppConfig, error) {
@@ -18,6 +19,7 @@ func LoadConfig(path string) (*AppConfig, error) {
 	viper.BindEnv("DB_SOURCE", "DB_SOURCE")
 	viper.BindEnv("HTTP_PORT", "HTTP_PORT")
 	viper.BindEnv("DB_DRIVER", "DB_DRIVER")
+	viper.BindEnv("DB_SOURCE_TEST", "DB_SOURCE_TEST")
 
 	// Check if environment is set to production
 	if viper.GetString("ENVIRONMENT") != "production" {
