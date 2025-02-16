@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  postgres:
+    container_name: goflow_postgres
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: goflow
+    ports:
+      - "5432:5432"
+
+  postgres_test:
+    container_name: goflow_postgres_test
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: goflow_test
+    ports:
+      - "5433:5432"
