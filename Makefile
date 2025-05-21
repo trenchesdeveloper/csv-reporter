@@ -25,7 +25,7 @@ migratedown:
 	migrate -path db/migrations -database "postgresql://root:secret@localhost:5433/goflow_test?sslmode=disable" -verbose up
 
 gen-docs:
-	swag init -g ./api/main.go -d cmd,internal && swag fmt
+	swag init -g ./api/main.go -d cmd && swag fmt
 
 
 sqlc:

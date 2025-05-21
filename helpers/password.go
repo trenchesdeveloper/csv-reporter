@@ -13,9 +13,9 @@ func HashPasswordBase64(password string) (string, error) {
 		return "", fmt.Errorf("error hashing password: %w", err)
 	}
 
-	hashedPaswordBase64 := base64.StdEncoding.EncodeToString(bytes)
+	encodedHash := base64.StdEncoding.EncodeToString(bytes)
 
-	return hashedPaswordBase64, nil
+	return encodedHash, nil
 }
 
 func ComparePasswordBase64(hashedPasswordBase64 string, password string) error {
