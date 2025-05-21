@@ -44,6 +44,8 @@ func (s *server) mount() http.Handler {
 
 	// Public routes
 	r.Route("/auth", func(r chi.Router) {
+		r.Post("/signup", s.SignupHandler)
+		// r.Post("/login", s.LoginHandler)
 	})
 	return r
 }

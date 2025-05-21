@@ -9,7 +9,9 @@ type AppConfig struct {
 	DBDRIVER       string `mapstructure:"DB_DRIVER"`
 	DB_SOURCE_TEST string `mapstructure:"DB_SOURCE_TEST"`
 	SERVER_PORT    string `mapstructure:"SERVER_PORT"`
-	ENVIRONMENT	string `mapstructure:"ENVIRONMENT"`
+	ENVIRONMENT    string `mapstructure:"ENVIRONMENT"`
+	JWT_SECRET     string `mapstructure:"JWT_SECRET"`
+	AppName        string `mapstructure:"APP_NAME"`
 }
 
 func LoadConfig(path string) (*AppConfig, error) {
@@ -23,8 +25,10 @@ func LoadConfig(path string) (*AppConfig, error) {
 	viper.BindEnv("DB_SOURCE_TEST", "DB_SOURCE_TEST")
 	viper.BindEnv("SERVER_PORT", "SERVER_PORT")
 	viper.BindEnv("ENVIRONMENT", "ENVIRONMENT")
+	viper.BindEnv("JWT_SECRET", "JWT_SECRET")
+	viper.BindEnv("APP_NAME", "APP_NAME")
 
-	// Check if environment is set to production
+	// Check if the environment is set to production
 	if viper.GetString("ENVIRONMENT") != "production" {
 		viper.AddConfigPath(path)
 		viper.SetConfigName("app")
