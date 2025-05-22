@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"go.uber.org/zap"
 	"log"
 	"time"
 
 	"github.com/trenchesdeveloper/csv-reporter/config"
 	db "github.com/trenchesdeveloper/csv-reporter/db/sqlc"
-	"go.uber.org/zap"
 )
 
 const version = "0.0.1"
@@ -24,10 +24,10 @@ const version = "0.0.1"
 //	@license.name	Apache 2.0
 //	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
 
-//	@BasePath					/v1
-//	@securityDefinitions.apikey	ApiKeyAuth
-//	@in							header
-//	@name						Authorization
+// @BasePath					/v1
+// @securityDefinitions.apikey	ApiKeyAuth
+// @in							header
+// @name						Authorization
 func main() {
 	cfg, err := config.LoadConfig(".")
 
@@ -43,8 +43,9 @@ func main() {
 	defer logger.Sync()
 
 	app := &server{
-		config: cfg,
-		logger: logger,
+		config:       cfg,
+		logger:       logger,
+		tokenManager: NewJwtManager(cfg),
 	}
 
 	// connect to the database

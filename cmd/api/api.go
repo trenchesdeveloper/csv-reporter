@@ -17,9 +17,10 @@ import (
 )
 
 type server struct {
-	config *config.AppConfig
-	store  db.Store
-	logger *zap.SugaredLogger
+	config       *config.AppConfig
+	store        db.Store
+	logger       *zap.SugaredLogger
+	tokenManager *JwtManager
 }
 
 func (s *server) mount() http.Handler {
@@ -45,7 +46,7 @@ func (s *server) mount() http.Handler {
 	// Public routes
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/signup", s.SignupHandler)
-		// r.Post("/login", s.LoginHandler)
+		r.Post("/login", s.SigninHandler)
 	})
 	return r
 }

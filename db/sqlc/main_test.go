@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"path"
@@ -19,37 +18,41 @@ import (
 var testStore Store
 
 func TestMain(m *testing.M) {
+	// 1) Load config & open DB
 	cfg, err := config.LoadConfig("../..")
 	if err != nil {
-		log.Fatal("cannot load config:", err)
+		log.Fatalf("cannot load config: %v", err)
 	}
-
 	connPool, err := sql.Open(cfg.DBDRIVER, cfg.DB_SOURCE_TEST)
 	if err != nil {
-		log.Fatal("cannot connect to db:", err)
+		log.Fatalf("cannot connect to db: %v", err)
 	}
+
+	// 2) Build migration path
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Fatal("cannot get working directory:", err)
+		log.Fatalf("cannot get working directory: %v", err)
 	}
-
 	projectRoot := path.Join(wd, "..")
 	migrationDir := path.Join(projectRoot, "migrations")
-	migrationPath := fmt.Sprintf("file:///%s", migrationDir)
+	// Use exactly three slashes then the absolute path
+	migrationPath := "file:///" + migrationDir
 	log.Println("Migration path:", migrationPath)
 
-	migration, err := migrate.New(migrationPath, cfg.DB_SOURCE_TEST)
+	// 3) Run migrations (ignore ErrNoChange)
+	migr, err := migrate.New(migrationPath, cfg.DB_SOURCE_TEST)
 	if err != nil {
-		log.Fatal("failed to create migration instance:", err)
+		log.Fatalf("failed to create migrate instance: %v", err)
+	}
+	if err := migr.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatalf("failed to run up migrations: %v", err)
 	}
 
-	if err := migration.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	// 4) Init store & run tests
+	testStore = NewStore(connPool)
+	code := m.Run()
 
-		log.Println("postgres migrated")
-
-		defer connPool.Close()
-
-		testStore = NewStore(connPool)
-		os.Exit(m.Run())
-	}
+	// 5) Cleanup & exit
+	connPool.Close()
+	os.Exit(code)
 }
