@@ -110,16 +110,10 @@ const getTokenByPrimaryKey = `-- name: GetTokenByPrimaryKey :one
 SELECT user_id, hashed_token, created_at, expires_at
 FROM refresh_tokens
 WHERE user_id = $1
-  AND hashed_token = $2
 `
 
-type GetTokenByPrimaryKeyParams struct {
-	UserID      uuid.UUID `json:"user_id"`
-	HashedToken string    `json:"hashed_token"`
-}
-
-func (q *Queries) GetTokenByPrimaryKey(ctx context.Context, arg GetTokenByPrimaryKeyParams) (RefreshToken, error) {
-	row := q.db.QueryRowContext(ctx, getTokenByPrimaryKey, arg.UserID, arg.HashedToken)
+func (q *Queries) GetTokenByPrimaryKey(ctx context.Context, userID uuid.UUID) (RefreshToken, error) {
+	row := q.db.QueryRowContext(ctx, getTokenByPrimaryKey, userID)
 	var i RefreshToken
 	err := row.Scan(
 		&i.UserID,

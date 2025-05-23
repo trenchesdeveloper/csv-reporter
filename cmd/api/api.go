@@ -51,6 +51,7 @@ func (s *server) mount() http.Handler {
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/signup", s.SignupHandler)
 		r.Post("/login", s.SigninHandler)
+		r.Post("/refresh", s.RefreshTokenHandler)
 	})
 	return r
 }

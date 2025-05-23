@@ -36,8 +36,7 @@ RETURNING *;
 -- name: GetTokenByPrimaryKey :one
 SELECT *
 FROM refresh_tokens
-WHERE user_id = $1
-  AND hashed_token = $2;
+WHERE user_id = $1;
 
 
 -- name: DeleteAllUserRefreshTokens :exec

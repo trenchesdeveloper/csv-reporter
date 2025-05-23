@@ -20,7 +20,7 @@ type Querier interface {
 	FindUserByEmail(ctx context.Context, email string) (User, error)
 	FindUserById(ctx context.Context, id uuid.UUID) (User, error)
 	GetRefreshToken(ctx context.Context, hashedToken string) (RefreshToken, error)
-	GetTokenByPrimaryKey(ctx context.Context, arg GetTokenByPrimaryKeyParams) (RefreshToken, error)
+	GetTokenByPrimaryKey(ctx context.Context, userID uuid.UUID) (RefreshToken, error)
 	UpdateRefreshTokenExpiry(ctx context.Context, arg UpdateRefreshTokenExpiryParams) (RefreshToken, error)
 }
 
