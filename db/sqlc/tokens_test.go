@@ -114,11 +114,11 @@ func TestDeleteUserRefreshTokens(t *testing.T) {
 	otherUser := createRandomUser(t)
 	otherToken := createRandomRefreshToken(t, otherUser)
 
-	// Delete all tokens for the first user
-	err := testStore.DeleteUserRefreshTokens(context.Background(), user.ID)
+	// Delete all tokens for the first user using the new exec query
+	err := testStore.DeleteAllUserRefreshTokens(context.Background(), user.ID)
 	require.NoError(t, err)
 
-	// Try to get the deleted tokens - should fail
+	// Try to get the deleted tokens - should all error
 	_, err = testStore.GetRefreshToken(context.Background(), token1.HashedToken)
 	require.Error(t, err)
 	_, err = testStore.GetRefreshToken(context.Background(), token2.HashedToken)

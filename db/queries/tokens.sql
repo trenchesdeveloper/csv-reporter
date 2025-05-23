@@ -22,10 +22,10 @@ DELETE
 FROM refresh_tokens
 WHERE expires_at <= NOW();
 
--- name: DeleteUserRefreshTokens :exec
-DELETE
-FROM refresh_tokens
-WHERE user_id = $1;
+-- name: DeleteUserRefreshToken :exec
+DELETE FROM refresh_tokens
+WHERE user_id = $1
+  AND hashed_token = $2;
 
 -- name: UpdateRefreshTokenExpiry :one
 UPDATE refresh_tokens
@@ -39,3 +39,7 @@ FROM refresh_tokens
 WHERE user_id = $1
   AND hashed_token = $2;
 
+
+-- name: DeleteAllUserRefreshTokens :exec
+DELETE FROM refresh_tokens
+WHERE user_id = $1;

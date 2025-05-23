@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"github.com/trenchesdeveloper/csv-reporter/helpers"
 	"go.uber.org/zap"
 	"log"
 	"time"
@@ -45,7 +46,7 @@ func main() {
 	app := &server{
 		config:       cfg,
 		logger:       logger,
-		tokenManager: NewJwtManager(cfg),
+		tokenManager: helpers.NewJwtManager(cfg),
 	}
 
 	// connect to the database

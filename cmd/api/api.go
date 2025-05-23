@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/lib/pq"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"github.com/trenchesdeveloper/csv-reporter/helpers"
 	"go.uber.org/zap"
 
 	"net/http"
@@ -20,7 +21,7 @@ type server struct {
 	config       *config.AppConfig
 	store        db.Store
 	logger       *zap.SugaredLogger
-	tokenManager *JwtManager
+	tokenManager *helpers.JwtManager
 }
 
 func (s *server) mount() http.Handler {

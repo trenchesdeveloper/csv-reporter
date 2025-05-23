@@ -1,9 +1,13 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	db "github.com/trenchesdeveloper/csv-reporter/db/sqlc"
 	"github.com/trenchesdeveloper/csv-reporter/helpers"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
+	"time"
 )
 
 type SignupRequest struct {
@@ -42,7 +46,7 @@ func (s *server) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := s.store.CreateUser(r.Context(), db.CreateUserParams{
+	_, err = s.store.CreateUser(r.Context(), db.CreateUserParams{
 		Email:          req.Email,
 		HashedPassword: hashedPassword,
 	})
@@ -53,7 +57,7 @@ func (s *server) SignupHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonResponse(w, http.StatusCreated, user, "User created successfully")
+	jsonResponse(w, http.StatusCreated, nil, "User created successfully")
 }
 
 func (s *server) SigninHandler(w http.ResponseWriter, r *http.Request) {
@@ -87,5 +91,42 @@ func (s *server) SigninHandler(w http.ResponseWriter, r *http.Request) {
 		errorResponse(w, http.StatusInternalServerError, "Error generating token")
 		return
 	}
+
+	// delete the old refresh token
+	err = s.store.DeleteAllUserRefreshTokens(r.Context(), user.ID)
+	if err != nil {
+		s.logger.Error("Error deleting old refresh tokens", err)
+		errorResponse(w, http.StatusInternalServerError, "Error deleting old refresh tokens")
+		return
+	}
+	// convert hashed token to base64
+	hashedToken, err := hashToken(token.RefreshToken)
+	// create refresh_token
+	_, err = s.store.CreateRefreshToken(r.Context(), db.CreateRefreshTokenParams{
+		HashedToken: hashedToken,
+		UserID:      user.ID,
+		ExpiresAt:   time.Now().Add(24 * time.Hour * 7),
+	})
+
+	if err != nil {
+		s.logger.Error("Error creating refresh token", err)
+		errorResponse(w, http.StatusInternalServerError, "Error creating refresh token")
+		return
+	}
+
 	jsonResponse(w, http.StatusOK, token, "Signin successful")
+}
+
+func hashToken(plain string) (string, error) {
+	// 1) Pre-hash:
+	sum := sha256.Sum256([]byte(plain))
+
+	// 2) Bcrypt the 32-byte digest
+	bts, err := bcrypt.GenerateFromPassword(sum[:], bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+
+	// 3) Base64 for safe storage
+	return base64.StdEncoding.EncodeToString(bts), nil
 }

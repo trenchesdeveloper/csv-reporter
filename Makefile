@@ -1,5 +1,10 @@
+API_FILES := $(filter-out %_test.go,$(wildcard cmd/api/*.go))
+
 server: gen-docs
-	nodemon --watch './**/*.go' --signal SIGTERM --exec APP_ENV=dev 'go' run cmd/api/*.go
+	nodemon \
+	  --watch './**/*.go' \
+	  --signal SIGTERM \
+	  --exec "APP_ENV=dev go run $(API_FILES)"
 
 migratecreate:
 	# Create a new migration file

@@ -38,6 +38,16 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 	return i, err
 }
 
+const deleteAllUserRefreshTokens = `-- name: DeleteAllUserRefreshTokens :exec
+DELETE FROM refresh_tokens
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteAllUserRefreshTokens, userID)
+	return err
+}
+
 const deleteExpiredRefreshTokens = `-- name: DeleteExpiredRefreshTokens :exec
 DELETE
 FROM refresh_tokens
@@ -60,14 +70,19 @@ func (q *Queries) DeleteRefreshToken(ctx context.Context, hashedToken string) er
 	return err
 }
 
-const deleteUserRefreshTokens = `-- name: DeleteUserRefreshTokens :exec
-DELETE
-FROM refresh_tokens
+const deleteUserRefreshToken = `-- name: DeleteUserRefreshToken :exec
+DELETE FROM refresh_tokens
 WHERE user_id = $1
+  AND hashed_token = $2
 `
 
-func (q *Queries) DeleteUserRefreshTokens(ctx context.Context, userID uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteUserRefreshTokens, userID)
+type DeleteUserRefreshTokenParams struct {
+	UserID      uuid.UUID `json:"user_id"`
+	HashedToken string    `json:"hashed_token"`
+}
+
+func (q *Queries) DeleteUserRefreshToken(ctx context.Context, arg DeleteUserRefreshTokenParams) error {
+	_, err := q.db.ExecContext(ctx, deleteUserRefreshToken, arg.UserID, arg.HashedToken)
 	return err
 }
 
