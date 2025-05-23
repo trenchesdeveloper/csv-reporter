@@ -78,7 +78,7 @@ func (j JwtManager) ValidateToken(tokenString string) (*jwt.Token, error) {
 	return token, nil
 }
 
-func (j JwtManager) isAccessToken(token *jwt.Token) bool {
+func (j JwtManager) IsAccessToken(token *jwt.Token) bool {
 	claims, ok := token.Claims.(*CustomClaims)
 	if !ok {
 		return false

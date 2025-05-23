@@ -41,7 +41,10 @@ func (s *server) mount() http.Handler {
 	})
 
 	r.Route("/users", func(r chi.Router) {
-
+		r.Use(NewAuthMiddleware(s.tokenManager, s.store))
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Hello, world!"))
+		})
 	})
 
 	// Public routes
