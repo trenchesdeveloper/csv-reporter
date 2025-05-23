@@ -5,13 +5,28 @@ import (
 )
 
 type AppConfig struct {
-	DBSOURCE       string `mapstructure:"DB_SOURCE"`
-	DBDRIVER       string `mapstructure:"DB_DRIVER"`
-	DB_SOURCE_TEST string `mapstructure:"DB_SOURCE_TEST"`
-	SERVER_PORT    string `mapstructure:"SERVER_PORT"`
-	ENVIRONMENT    string `mapstructure:"ENVIRONMENT"`
-	JWT_SECRET     string `mapstructure:"JWT_SECRET"`
-	AppName        string `mapstructure:"APP_NAME"`
+	DBSOURCE                string `mapstructure:"DB_SOURCE"`
+	DBDRIVER                string `mapstructure:"DB_DRIVER"`
+	DB_SOURCE_TEST          string `mapstructure:"DB_SOURCE_TEST"`
+	SERVER_PORT             string `mapstructure:"SERVER_PORT"`
+	ENVIRONMENT             string `mapstructure:"ENVIRONMENT"`
+	JWT_SECRET              string `mapstructure:"JWT_SECRET"`
+	AppName                 string `mapstructure:"APP_NAME"`
+	AWS_ACCESS_KEY_ID       string `mapstructure:"AWS_ACCESS_KEY_ID"`
+	AWS_SECRET_ACCESS_KEY   string `mapstructure:"AWS_SECRET_ACCESS_KEY"`
+	AWS_DEFAULT_REGION      string `mapstructure:"AWS_DEFAULT_REGION"`
+	SQS_QUEUE               string `mapstructure:"SQS_QUEUE"`
+	S3_BUCKET               string `mapstructure:"S3_BUCKET"`
+	S3_LOCALSTACK_ENDPOINT  string `mapstructure:"S3_LOCALSTACK_ENDPOINT"`
+	SQS_LOCALSTACK_ENDPOINT string `mapstructure:"SQS_LOCALSTACK_ENDPOINT"`
+
+	TF_VAR_aws_access_key_id       string `mapstructure:"TF_VAR_aws_access_key_id"`
+	TF_VAR_aws_secret_access_key   string `mapstructure:"TF_VAR_aws_secret_access_key"`
+	TF_VAR_aws_default_region      string `mapstructure:"TF_VAR_aws_default_region"`
+	TF_VAR_sqs_queue               string `mapstructure:"TF_VAR_sqs_queue"`
+	TF_VAR_s3_bucket               string `mapstructure:"TF_VAR_s3_bucket"`
+	TF_VAR_s3_localstack_endpoint  string `mapstructure:"TF_VAR_s3_localstack_endpoint"`
+	TF_VAR_sqs_localstack_endpoint string `mapstructure:"TF_VAR_sqs_localstack_endpoint"`
 }
 
 func LoadConfig(path string) (*AppConfig, error) {
@@ -27,6 +42,18 @@ func LoadConfig(path string) (*AppConfig, error) {
 	viper.BindEnv("ENVIRONMENT", "ENVIRONMENT")
 	viper.BindEnv("JWT_SECRET", "JWT_SECRET")
 	viper.BindEnv("APP_NAME", "APP_NAME")
+	viper.BindEnv("AWS_ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID")
+	viper.BindEnv("AWS_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY")
+	viper.BindEnv("AWS_DEFAULT_REGION", "AWS_DEFAULT_REGION")
+	viper.BindEnv("SQS_QUEUE", "SQS_QUEUE")
+	viper.BindEnv("S3_BUCKET", "S3_BUCKET")
+	viper.BindEnv("TF_VAR_aws_access_key_id", "TF_VAR_aws_access_key_id")
+	viper.BindEnv("TF_VAR_aws_secret_access_key", "TF_VAR_aws_secret_access_key")
+	viper.BindEnv("TF_VAR_aws_default_region", "TF_VAR_aws_default_region")
+	viper.BindEnv("TF_VAR_sqs_queue", "TF_VAR_sqs_queue")
+	viper.BindEnv("TF_VAR_s3_bucket", "TF_VAR_s3_bucket")
+	viper.BindEnv("S3_LOCALSTACK_ENDPOINT", "S3_LOCALSTACK_ENDPOINT")
+	viper.BindEnv("SQS_LOCALSTACK_ENDPOINT", "SQS_LOCALSTACK_ENDPOINT")
 
 	// Check if the environment is set to production
 	if viper.GetString("ENVIRONMENT") != "production" {

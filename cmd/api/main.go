@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"database/sql"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/trenchesdeveloper/csv-reporter/helpers"
 	"go.uber.org/zap"
 	"log"
 	"time"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/trenchesdeveloper/csv-reporter/config"
 	db "github.com/trenchesdeveloper/csv-reporter/db/sqlc"
 )
@@ -38,6 +41,27 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	// Load the AWS SDK config
+	sdkConfig, err := awsconfig.LoadDefaultConfig(ctx)
+
+	if err != nil {
+		log.Fatalf("failed to load SDK config: %v", err)
+	}
+
+	// Use the SDK config to create a service client s3
+	s3Client := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(cfg.S3_LOCALSTACK_ENDPOINT)
+		o.UsePathStyle = true
+	})
+
+	out, err := s3Client.ListBuckets(ctx, &s3.ListBucketsInput{})
+	if err != nil {
+		log.Fatalf("failed to list buckets: %v", err)
+	}
+	for _, bucket := range out.Buckets {
+		log.Printf("bucket: %s\n", *bucket.Name)
+	}
 
 	// logger
 	logger := zap.Must(zap.NewProduction()).Sugar()
