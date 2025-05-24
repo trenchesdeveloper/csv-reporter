@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/trenchesdeveloper/csv-reporter/config"
 	db "github.com/trenchesdeveloper/csv-reporter/db/sqlc"
-	"log"
+	"go.uber.org/zap"
 	"strconv"
 	"strings"
 	"time"
@@ -23,14 +23,16 @@ type ReportBuilder struct {
 	lozClient *LozClient
 	s3Client  *s3.Client
 	config    *config.AppConfig
+	logger    *zap.SugaredLogger
 }
 
-func NewReportBuilder(store db.Store, lozClient *LozClient, s3Client *s3.Client, config *config.AppConfig) *ReportBuilder {
+func NewReportBuilder(store db.Store, lozClient *LozClient, s3Client *s3.Client, config *config.AppConfig, logger *zap.SugaredLogger) *ReportBuilder {
 	return &ReportBuilder{
 		store:     store,
 		lozClient: lozClient,
 		s3Client:  s3Client,
 		config:    config,
+		logger:    logger,
 	}
 }
 
@@ -156,7 +158,7 @@ func (rb *ReportBuilder) BuildReport(ctx context.Context, userId uuid.UUID, repo
 		return db.Report{}, fmt.Errorf("failed to update report %s: %w", reportId, err)
 	}
 
-	log.Println("Successfully built report:", reportId)
+	rb.logger.Info("successfully uploaded report to S3")
 
 	return updatedReport, nil
 }

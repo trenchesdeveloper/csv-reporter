@@ -365,32 +365,38 @@ func (s *server) GetReportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if report.CompletedAt.Valid && report.DownloadExpiresAt.Time.Before(time.Now()) && report.DownloadUrl.Valid {
-		// check if we have access to presigned client
-		expiredAt := time.Now().Add(time.Minute * 10)
-		signedUrl, err := s.presignedClient.PresignGetObject(r.Context(), &s3.GetObjectInput{
-			Bucket: aws.String(s.config.S3_BUCKET),
-			Key:    aws.String(report.OutputFilePath.String),
-		}, func(options *s3.PresignOptions) {
-			options.Expires = time.Second * 10
-		})
+	if report.CompletedAt.Valid {
+		refreshNeeded := report.DownloadExpiresAt.Valid && report.DownloadExpiresAt.Time.Before(time.Now())
+		if !report.DownloadUrl.Valid || refreshNeeded {
+			expiredAt := time.Now().Add(time.Minute * 10)
+			signedUrl, err := s.presignedClient.PresignGetObject(r.Context(), &s3.GetObjectInput{
+				Bucket: aws.String(s.config.S3_BUCKET),
+				Key:    aws.String(report.OutputFilePath.String),
+			}, func(options *s3.PresignOptions) {
+				options.Expires = time.Second * 10
+			})
 
-		if err != nil {
-			s.logger.Error("Error generating presigned URL", err)
-			errorResponse(w, http.StatusInternalServerError, "Error generating presigned URL")
-			return
-		}
+			s.logger.Debug("Generated presigned URL:", signedUrl.URL)
 
-		// update the report
-		_, err = s.store.UpdateReport(r.Context(), db.UpdateReportParams{
-			DownloadUrl:       sql.NullString{String: signedUrl.URL, Valid: true},
-			DownloadExpiresAt: sql.NullTime{Time: expiredAt, Valid: true},
-		})
+			if err != nil {
+				s.logger.Error("Error generating presigned URL", err)
+				errorResponse(w, http.StatusInternalServerError, "Error generating presigned URL")
+				return
+			}
 
-		if err != nil {
-			s.logger.Error("Error updating report with download URL", err)
-			errorResponse(w, http.StatusInternalServerError, "Error updating report with download URL")
-			return
+			// update the report
+			report, err = s.store.UpdateReport(r.Context(), db.UpdateReportParams{
+				ID:                report.ID,
+				UserID:            report.UserID,
+				DownloadUrl:       sql.NullString{String: signedUrl.URL, Valid: true},
+				DownloadExpiresAt: sql.NullTime{Time: expiredAt, Valid: true},
+			})
+
+			if err != nil {
+				s.logger.Error("Error updating report with download URL", err)
+				errorResponse(w, http.StatusInternalServerError, "Error updating report with download URL")
+				return
+			}
 		}
 
 	}
