@@ -4,13 +4,20 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/go-chi/chi/v5"
+	"net/http"
+	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/google/uuid"
 	db "github.com/trenchesdeveloper/csv-reporter/db/sqlc"
 	"github.com/trenchesdeveloper/csv-reporter/helpers"
+	"github.com/trenchesdeveloper/csv-reporter/reports"
 	"golang.org/x/crypto/bcrypt"
-	"net/http"
-	"time"
 )
 
 type SignupRequest struct {
@@ -25,6 +32,24 @@ type SigninRequest struct {
 
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
+type CreateReportRequest struct {
+	ReportType string `json:"report_type" validate:"required,oneof=monsters weapons armor"`
+}
+
+type ReportResponse struct {
+	ID                   uuid.UUID `json:"id"`
+	ReportType           string    `json:"report_type,omitempty"`
+	OutputFilePath       string    `json:"output_file_path,omitempty"`
+	DownloadURL          string    `json:"download_url,omitempty"`
+	DownloadUrlExpiresAt time.Time `json:"download_url_expires_at,omitempty"`
+	StartedAt            time.Time `json:"started_at,omitempty"`
+	CompletedAt          time.Time `json:"completed_at,omitempty"`
+	FailedAt             time.Time `json:"failed_at,omitempty"`
+	CreatedAt            time.Time `json:"created_at,omitempty"`
+	ErrorMessage         string    `json:"error_message,omitempty"`
+	Status               string    `json:"status"`
 }
 
 func (s *server) SignupHandler(w http.ResponseWriter, r *http.Request) {
@@ -229,6 +254,181 @@ func (s *server) RefreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// check if the user exists in the database
 	jsonResponse(w, http.StatusOK, token, "Refresh token successful")
+}
+
+func (s *server) CreateReportHandler(w http.ResponseWriter, r *http.Request) {
+	var req CreateReportRequest
+	if err := readJSON(w, r, &req); err != nil {
+		errorResponse(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	if err := Validate.Struct(req); err != nil {
+		errorResponse(w, http.StatusBadRequest, formatValidationErrors(err))
+		return
+	}
+
+	user, ok := UserFromContext(r)
+	if !ok {
+		errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	report, err := s.store.CreateReport(r.Context(), db.CreateReportParams{
+		UserID:     user.ID,
+		ReportType: req.ReportType,
+	})
+
+	if err != nil {
+		s.logger.Error("Error creating report", err)
+		errorResponse(w, http.StatusInternalServerError, "Error creating report")
+		return
+	}
+
+	//  send sqs message to build the report
+	sqsMessage := reports.SQSMessage{
+		UserID:   report.UserID,
+		ReportID: report.ID,
+	}
+	queueUrl, err := s.sqsClient.GetQueueUrl(r.Context(), &sqs.GetQueueUrlInput{
+		QueueName: aws.String(s.config.SQS_QUEUE),
+	})
+
+	if err != nil {
+		s.logger.Error("Error getting SQS queue URL", err)
+		errorResponse(w, http.StatusInternalServerError, "Error getting SQS queue URL")
+		return
+	}
+
+	bytes, err := json.Marshal(sqsMessage)
+
+	if err != nil {
+		s.logger.Error("Error getting SQS queue URL", err)
+		errorResponse(w, http.StatusInternalServerError, "Error getting SQS queue URL")
+		return
+	}
+
+	_, err = s.sqsClient.SendMessage(r.Context(), &sqs.SendMessageInput{
+		QueueUrl:    queueUrl.QueueUrl,
+		MessageBody: aws.String(string(bytes)),
+	})
+	if err != nil {
+		s.logger.Error("Error sending message to SQS", err)
+		errorResponse(w, http.StatusInternalServerError, "Error sending message to SQS")
+		return
+	}
+
+	reportResponse := ReportResponse{
+		ID:                   report.ID,
+		ReportType:           req.ReportType,
+		StartedAt:            report.StartedAt.Time,
+		Status:               GetStatus(report),
+		OutputFilePath:       report.OutputFilePath.String,
+		DownloadURL:          report.DownloadUrl.String,
+		DownloadUrlExpiresAt: report.DownloadExpiresAt.Time,
+		CompletedAt:          report.CompletedAt.Time,
+		FailedAt:             report.FailedAt.Time,
+		CreatedAt:            report.CreatedAt,
+		ErrorMessage:         report.ErrorMessage.String,
+	}
+
+	jsonResponse(w, http.StatusCreated, reportResponse, "Report created successfully")
+}
+
+func (s *server) GetReportHandler(w http.ResponseWriter, r *http.Request) {
+	user, ok := UserFromContext(r)
+	if !ok {
+		errorResponse(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	reportIdStr := chi.URLParam(r, "reportId")
+	reportId, err := uuid.Parse(reportIdStr)
+	if err != nil {
+		s.logger.Error("Error parsing report ID", err)
+		errorResponse(w, http.StatusBadRequest, "Invalid report ID")
+		return
+	}
+
+	report, err := s.store.GetReport(r.Context(), db.GetReportParams{
+		ID:     reportId,
+		UserID: user.ID,
+	})
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			errorResponse(w, http.StatusNotFound, "Report not found")
+			return
+		}
+		s.logger.Error("Error getting report", err)
+		errorResponse(w, http.StatusInternalServerError, "Error getting report")
+		return
+	}
+
+	if report.CompletedAt.Valid && report.DownloadExpiresAt.Time.Before(time.Now()) && report.DownloadUrl.Valid {
+		// check if we have access to presigned client
+		expiredAt := time.Now().Add(time.Minute * 10)
+		signedUrl, err := s.presignedClient.PresignGetObject(r.Context(), &s3.GetObjectInput{
+			Bucket: aws.String(s.config.S3_BUCKET),
+			Key:    aws.String(report.OutputFilePath.String),
+		}, func(options *s3.PresignOptions) {
+			options.Expires = time.Second * 10
+		})
+
+		if err != nil {
+			s.logger.Error("Error generating presigned URL", err)
+			errorResponse(w, http.StatusInternalServerError, "Error generating presigned URL")
+			return
+		}
+
+		// update the report
+		_, err = s.store.UpdateReport(r.Context(), db.UpdateReportParams{
+			DownloadUrl:       sql.NullString{String: signedUrl.URL, Valid: true},
+			DownloadExpiresAt: sql.NullTime{Time: expiredAt, Valid: true},
+		})
+
+		if err != nil {
+			s.logger.Error("Error updating report with download URL", err)
+			errorResponse(w, http.StatusInternalServerError, "Error updating report with download URL")
+			return
+		}
+
+	}
+
+	reportResponse := ReportResponse{
+		ID:                   report.ID,
+		ReportType:           report.ReportType,
+		OutputFilePath:       report.OutputFilePath.String,
+		DownloadURL:          report.DownloadUrl.String,
+		DownloadUrlExpiresAt: report.DownloadExpiresAt.Time,
+		StartedAt:            report.StartedAt.Time,
+		Status:               GetStatus(report),
+		CompletedAt:          report.CompletedAt.Time,
+		FailedAt:             report.FailedAt.Time,
+		ErrorMessage:         report.ErrorMessage.String,
+	}
+
+	jsonResponse(w, http.StatusOK, reportResponse, "Report retrieved successfully")
+}
+
+func isDone(r db.Report) bool {
+	return r.CompletedAt.Valid || r.FailedAt.Valid
+
+}
+
+func GetStatus(r db.Report) string {
+	switch {
+	case !r.StartedAt.Valid:
+		return "requested"
+	case r.StartedAt.Valid && !isDone(r):
+		return "processing"
+	case r.CompletedAt.Valid:
+		return "completed"
+	case r.FailedAt.Valid:
+		return "failed"
+	default:
+		return "unknown"
+	}
 }
 
 func hashToken(plain string) (string, error) {

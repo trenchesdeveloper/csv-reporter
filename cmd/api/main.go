@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/trenchesdeveloper/csv-reporter/helpers"
+
 	"go.uber.org/zap"
 	"log"
 	"time"
@@ -43,34 +45,18 @@ func main() {
 	defer cancel()
 
 	// Load the AWS SDK config
-	sdkConfig, err := awsconfig.LoadDefaultConfig(ctx)
-
-	if err != nil {
-		log.Fatalf("failed to load SDK config: %v", err)
-	}
-
-	// Use the SDK config to create a service client s3
-	s3Client := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(cfg.S3_LOCALSTACK_ENDPOINT)
-		o.UsePathStyle = true
-	})
-
-	out, err := s3Client.ListBuckets(ctx, &s3.ListBucketsInput{})
-	if err != nil {
-		log.Fatalf("failed to list buckets: %v", err)
-	}
-	for _, bucket := range out.Buckets {
-		log.Printf("bucket: %s\n", *bucket.Name)
-	}
+	sqsClient, presignedClient := mustNewAWSClient(ctx, cfg)
 
 	// logger
 	logger := zap.Must(zap.NewProduction()).Sugar()
 	defer logger.Sync()
 
 	app := &server{
-		config:       cfg,
-		logger:       logger,
-		tokenManager: helpers.NewJwtManager(cfg),
+		config:          cfg,
+		logger:          logger,
+		tokenManager:    helpers.NewJwtManager(cfg),
+		sqsClient:       sqsClient,
+		presignedClient: presignedClient,
 	}
 
 	// connect to the database
@@ -95,4 +81,29 @@ func main() {
 		logger.Fatal(err)
 	}
 
+}
+
+func mustNewAWSClient(ctx context.Context, cfg *config.AppConfig) (*sqs.Client, *s3.PresignClient) {
+	// 1) Load the SDK config, explicitly setting your Localstack region for signing
+	sdkCfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(cfg.AWS_DEFAULT_REGION), // e.g. "us-west-2"
+	)
+	if err != nil {
+		log.Fatalf("failed to load AWS SDK config: %v", err)
+	}
+
+	// 2) Tell the SQS client to use your Localstack URL as its “base endpoint”
+	sqsClient := sqs.NewFromConfig(sdkCfg, func(o *sqs.Options) {
+		o.BaseEndpoint = aws.String(cfg.SQS_LOCALSTACK_ENDPOINT) // e.g. "http://localhost:4566"
+	})
+
+	// create the S3 client with presigner
+	s3Client := s3.NewFromConfig(sdkCfg, func(o *s3.Options) {
+		o.BaseEndpoint = aws.String(cfg.S3_LOCALSTACK_ENDPOINT) // e.g. "http://localhost:4566"
+		o.UsePathStyle = true
+	})
+
+	presignerClient := s3.NewPresignClient(s3Client)
+
+	return sqsClient, presignerClient
 }

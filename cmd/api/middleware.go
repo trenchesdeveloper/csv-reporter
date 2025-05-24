@@ -67,3 +67,11 @@ func NewAuthMiddleware(jwtManager *helpers.JwtManager, store db.Store) func(next
 		})
 	}
 }
+
+func UserFromContext(r *http.Request) (db.User, bool) {
+	user, ok := r.Context().Value("user").(db.User)
+	if !ok {
+		return db.User{}, false
+	}
+	return user, true
+}

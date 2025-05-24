@@ -3,6 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	_ "github.com/lib/pq"
@@ -18,10 +21,12 @@ import (
 )
 
 type server struct {
-	config       *config.AppConfig
-	store        db.Store
-	logger       *zap.SugaredLogger
-	tokenManager *helpers.JwtManager
+	config          *config.AppConfig
+	store           db.Store
+	logger          *zap.SugaredLogger
+	tokenManager    *helpers.JwtManager
+	sqsClient       *sqs.Client
+	presignedClient *s3.PresignClient
 }
 
 func (s *server) mount() http.Handler {
@@ -45,6 +50,7 @@ func (s *server) mount() http.Handler {
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Hello, world!"))
 		})
+
 	})
 
 	// Public routes
@@ -52,6 +58,13 @@ func (s *server) mount() http.Handler {
 		r.Post("/signup", s.SignupHandler)
 		r.Post("/login", s.SigninHandler)
 		r.Post("/refresh", s.RefreshTokenHandler)
+	})
+
+	//reports route
+	r.Route("/reports", func(r chi.Router) {
+		r.Use(NewAuthMiddleware(s.tokenManager, s.store))
+		r.Post("/", s.CreateReportHandler)
+		r.Get("/{reportId}", s.GetReportHandler)
 	})
 	return r
 }
