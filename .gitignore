@@ -1,6 +1,6 @@
 # Terraform
 terraform/.terraform/
-terraform
+terraform/*.tfstate
 terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
 terraform/crash.log
@@ -9,4 +9,4 @@ terraform/*.override.tf.json
 terraform/.terraformrc
 terraform/terraform.rc
 
-
+volume/
