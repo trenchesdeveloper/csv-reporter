@@ -1,6 +1,10 @@
 package reports
 
-import "net/http"
+import (
+	"fmt"
+	"net/http"
+	"encoding/json"
+)
 
 const baseUrl = "https://botw-compendium.herokuapp.com/api/v3/compendium"
 
@@ -32,4 +36,34 @@ type Monster struct {
 	CommonLocations []string `json:"common_locations"`
 	Drops	   []string `json:"drops"`
 	Dlc bool `json:"dlc"`
+}
+
+type MonstersResponse struct {
+	Data []Monster `json:"data"`
+}
+
+func (c *Client) GetMonsters() (*MonstersResponse, error) {
+	url := c.baseURL + "/category/monsters"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+reqUrl := req.URL
+queryParams := req.URL.Query()
+queryParams.Set("game", "totk")
+	reqUrl.RawQuery = queryParams.Encode()
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+	var monstersResponse MonstersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&monstersResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+	return &monstersResponse, nil
 }
