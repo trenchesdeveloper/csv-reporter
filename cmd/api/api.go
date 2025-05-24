@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -37,35 +38,33 @@ func (s *server) mount() http.Handler {
 	r.Use(middleware.RealIP)
 
 	r.Use(middleware.Timeout(60 * time.Second))
-	r.Route("/v1", func(r chi.Router) {
+	r.Route("/api/v1", func(r chi.Router) {
 		//r.Get("/health", s.healthCheckHandler)
 		docsURL := fmt.Sprintf("%s/swagger/doc.json", s.config.SERVER_PORT)
 		r.Get("/swagger/*", httpSwagger.Handler(
 			httpSwagger.URL(docsURL), //The url pointing to API definition
 		))
-	})
 
-	r.Route("/users", func(r chi.Router) {
-		r.Use(NewAuthMiddleware(s.tokenManager, s.store))
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello, world!"))
+		// ping route
+		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("pong"))
 		})
 
+		// Public routes
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/signup", s.SignupHandler)
+			r.Post("/login", s.SigninHandler)
+			r.Post("/refresh", s.RefreshTokenHandler)
+		})
+
+		//reports route
+		r.Route("/reports", func(r chi.Router) {
+			r.Use(NewAuthMiddleware(s.tokenManager, s.store))
+			r.Post("/", s.CreateReportHandler)
+			r.Get("/{reportId}", s.GetReportHandler)
+		})
 	})
 
-	// Public routes
-	r.Route("/auth", func(r chi.Router) {
-		r.Post("/signup", s.SignupHandler)
-		r.Post("/login", s.SigninHandler)
-		r.Post("/refresh", s.RefreshTokenHandler)
-	})
-
-	//reports route
-	r.Route("/reports", func(r chi.Router) {
-		r.Use(NewAuthMiddleware(s.tokenManager, s.store))
-		r.Post("/", s.CreateReportHandler)
-		r.Get("/{reportId}", s.GetReportHandler)
-	})
 	return r
 }
 
