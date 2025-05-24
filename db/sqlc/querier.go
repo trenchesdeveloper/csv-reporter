@@ -12,16 +12,22 @@ import (
 
 type Querier interface {
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
+	CreateReport(ctx context.Context, arg CreateReportParams) (Report, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteAllUserRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
 	DeleteRefreshToken(ctx context.Context, hashedToken string) error
+	// UUID
+	DeleteReport(ctx context.Context, arg DeleteReportParams) error
 	DeleteUserRefreshToken(ctx context.Context, arg DeleteUserRefreshTokenParams) error
 	FindUserByEmail(ctx context.Context, email string) (User, error)
 	FindUserById(ctx context.Context, id uuid.UUID) (User, error)
 	GetRefreshToken(ctx context.Context, hashedToken string) (RefreshToken, error)
+	GetReport(ctx context.Context, arg GetReportParams) (Report, error)
 	GetTokenByPrimaryKey(ctx context.Context, userID uuid.UUID) (RefreshToken, error)
 	UpdateRefreshTokenExpiry(ctx context.Context, arg UpdateRefreshTokenExpiryParams) (RefreshToken, error)
+	// UUID
+	UpdateReport(ctx context.Context, arg UpdateReportParams) (Report, error)
 }
 
 var _ Querier = (*Queries)(nil)
