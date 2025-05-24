@@ -9,4 +9,5 @@ terraform/*.override.tf.json
 terraform/.terraformrc
 terraform/terraform.rc
 
-volume/
+volume/cache
+volume
