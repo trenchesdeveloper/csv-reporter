@@ -144,16 +144,16 @@ const updateReport = `-- name: UpdateReport :one
 
 UPDATE reports
 SET
-    output_file_path = $2,  -- VARCHAR
-    download_url = $3,  -- VARCHAR
-    download_expires_at = $4,  -- TIMESTAMPTZ
-    error_message = $5,  -- VARCHAR
-    started_at = $6,  -- TIMESTAMPTZ
-    failed_at = $7,  -- TIMESTAMPTZ
-    completed_at = $8   -- TIMESTAMPTZ
+    output_file_path = COALESCE($1, output_file_path),
+    download_url = COALESCE($2, download_url),
+    download_expires_at = COALESCE($3, download_expires_at),
+    error_message = COALESCE($4, error_message),
+    started_at = COALESCE($5, started_at),
+    failed_at = COALESCE($6, failed_at),
+    completed_at = COALESCE($7, completed_at)
 WHERE
-    user_id = $1  -- UUID
-  AND id      = $9 -- UUID
+    user_id = $8  -- UUID
+  AND id = $9 -- UUID
 RETURNING
     user_id,
     id,
@@ -169,7 +169,6 @@ RETURNING
 `
 
 type UpdateReportParams struct {
-	UserID            uuid.UUID      `json:"user_id"`
 	OutputFilePath    sql.NullString `json:"output_file_path"`
 	DownloadUrl       sql.NullString `json:"download_url"`
 	DownloadExpiresAt sql.NullTime   `json:"download_expires_at"`
@@ -177,13 +176,13 @@ type UpdateReportParams struct {
 	StartedAt         sql.NullTime   `json:"started_at"`
 	FailedAt          sql.NullTime   `json:"failed_at"`
 	CompletedAt       sql.NullTime   `json:"completed_at"`
+	UserID            uuid.UUID      `json:"user_id"`
 	ID                uuid.UUID      `json:"id"`
 }
 
 // UUID
 func (q *Queries) UpdateReport(ctx context.Context, arg UpdateReportParams) (Report, error) {
 	row := q.db.QueryRowContext(ctx, updateReport,
-		arg.UserID,
 		arg.OutputFilePath,
 		arg.DownloadUrl,
 		arg.DownloadExpiresAt,
@@ -191,6 +190,7 @@ func (q *Queries) UpdateReport(ctx context.Context, arg UpdateReportParams) (Rep
 		arg.StartedAt,
 		arg.FailedAt,
 		arg.CompletedAt,
+		arg.UserID,
 		arg.ID,
 	)
 	var i Report

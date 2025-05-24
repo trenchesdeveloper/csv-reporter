@@ -49,16 +49,16 @@ WHERE
 -- name: UpdateReport :one
 UPDATE reports
 SET
-    output_file_path = $2,  -- VARCHAR
-    download_url = $3,  -- VARCHAR
-    download_expires_at = $4,  -- TIMESTAMPTZ
-    error_message = $5,  -- VARCHAR
-    started_at = $6,  -- TIMESTAMPTZ
-    failed_at = $7,  -- TIMESTAMPTZ
-    completed_at = $8   -- TIMESTAMPTZ
+    output_file_path = COALESCE(sqlc.narg('output_file_path'), output_file_path),
+    download_url = COALESCE(sqlc.narg('download_url'), download_url),
+    download_expires_at = COALESCE(sqlc.narg('download_expires_at'), download_expires_at),
+    error_message = COALESCE(sqlc.narg('error_message'), error_message),
+    started_at = COALESCE(sqlc.narg('started_at'), started_at),
+    failed_at = COALESCE(sqlc.narg('failed_at'), failed_at),
+    completed_at = COALESCE(sqlc.narg('completed_at'), completed_at)
 WHERE
-    user_id = $1  -- UUID
-  AND id      = $9 -- UUID
+    user_id = sqlc.arg('user_id')  -- UUID
+  AND id = sqlc.arg('id') -- UUID
 RETURNING
     user_id,
     id,
